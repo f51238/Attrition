@@ -1,12 +1,9 @@
 import pandas as pd
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, KFold, RandomizedSearchCV
 from sklearn.preprocessing import StandardScaler, OneHotEncoder, LabelEncoder, OrdinalEncoder
-from sklearn.linear_model import LogisticRegression
-from sklearn.svm import SVC
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier 
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.ensemble import GradientBoostingClassifier
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, roc_auc_score
 from sklearn.utils import class_weight
-from sklearn.model_selection import RandomizedSearchCV
 
 def evaluate_model(model, X_test, y_test): 
     y_pred = model.predict(X_test)
@@ -40,7 +37,7 @@ X = data_encoded.drop(['EmployeeID', 'Left'], axis = 1)
 y = data_encoded['Left']
 
 # Step 4: Split data into train and test sets
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
 # Step 5: Feature scaling
 scaler = StandardScaler() 
@@ -53,43 +50,27 @@ sample_weights = class_weight.compute_sample_weight ('balanced', y_train)
 # Step 7: Fine tune parameters
 # Use RandomizedSearchCV for hyperparameter tuning
 param_dist = {
-    'Gradient Boosting': {
-        'n_estimators': [50,100,200],
-        'learning_rate': [0.01,0.1,1],
-        'min_samples_split': [2,5,10],
-        'min_samples_leaf': [1,2,4],
-        'max_depth': [3,5,10]
-    }
+    'n_estimators': [50,100,200],
+    'learning_rate': [0.01,0.1,1],
+    'min_samples_split': [2,5,10],
+    'min_samples_leaf': [1,2,4],
+    'max_depth': [3,5,10]
 }
 
+# Define cross-validation strategy
+cv = KFold(n_splits=5, shuffle=True, random_state=42)
+
 # Step 8: Create Classifier
-clf = GradientBoostingClassifier(n_estimators=200, learning_rate=1, max_depth = 5, min_samples_split=10, min_samples_leaf=1, random_state=21)
+clf = GradientBoostingClassifier(random_state=21)
 
 # Step 9: Train and evaluate classifiers 
-random_search = RandomizedSearchCV(clf, param_distributions=param_dist['Gradient Boosting'], n_iter=15)
+random_search = RandomizedSearchCV(clf, param_distributions=param_dist, n_iter=15, cv=cv)
 random_search.fit(X_train_scaled, y_train, sample_weight=sample_weights)
 evaluate_model(random_search, X_test_scaled, y_test)
 
+# Compute predicted probabilities
+y_pred_proba = random_search.predict_proba(X_test_scaled)[:, 1]
 
-# Train your model
-clf = GradientBoostingClassifier(n_estimators=200, learning_rate=1, max_depth=5, min_samples_split=10, min_samples_leaf=1, random_state=21)
-clf.fit(X_train, y_train)
-
-# Get predicted probabilities
-probabilities = clf.predict_proba(X_test)
-
-# Convert to a DataFrame for easier viewing
-probabilities_df = pd.DataFrame(probabilities, columns=clf.classes_)
-# Get predicted classes
-predictions = clf.predict(X_test)
-
-# Convert actual classes, predicted classes and probabilities to a DataFrame
-results_df = pd.DataFrame({
-    'actual': y_test,
-    'predicted': predictions,
-    'probability_0': probabilities[:, 0],
-    'probability_1': probabilities[:, 1]
-})
-
-# Add a column to the DataFrame indicating whether each prediction was correct
-results_df['correct'] = results_df['actual'] == results_df['predicted']
+# Compute AUC-ROC
+auc_roc =roc_auc_score(y_test, y_pred_proba)
+print(f"AUC-ROC: {auc_roc}")
