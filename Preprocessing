@@ -1,0 +1,21 @@
+from sklearn.preprocessing import OrdinalEncoder
+
+# Define your ordinal columns and corresponding categories in order
+ordinal_columns = ['LM Rating', 'Rating']
+ordinal_categories = [['Blank', 'Not Achieved', 'Achieved', 'Over Achieved', 'Exceptional'], 
+                      ['Blank', 'Not Achieved', 'Achieved', 'Over Achieved', 'Exceptional']]
+
+# Label encode binary 'Left' column
+data['Left'] = data['Left'].map({'Yes': 1, 'No': 0})
+
+# Ordinal encode 'LM Rating' and 'Rating' columns
+ordinal_encoder = OrdinalEncoder(categories=ordinal_categories)
+data[ordinal_columns] = ordinal_encoder.fit_transform(data[ordinal_columns])
+
+# One-hot encode the nominal columns
+nominal_columns = ['Directorate', 'Location', 'JobFamilyType', 'Gender', 'Ethnicity', 'JobFamily']
+data_encoded = pd.get_dummies(data, columns=nominal_columns)
+
+# Display the first few rows of the dataframe to confirm encoding
+print("First few rows after encoding: ")
+print(data_encoded.head())
