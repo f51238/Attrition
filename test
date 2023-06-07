@@ -1,0 +1,71 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, OneHotEncoder, LabelEncoder, OrdinalEncoder
+from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier 
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.utils import class_weight
+from sklearn.model_selection import RandomizedSearchCV
+
+def evaluate_model(model, X_test, y_test): 
+    y_pred = model.predict(X_test)
+    accuracy = accuracy_score(y_test, y_pred) 
+    print(f"Accuracy: {accuracy}") 
+    print(confusion_matrix(y_test,y_pred))
+    print("\nClassification Report: ") 
+    print(classification_report(y_test, y_pred))
+    return accuracy, y_pred
+
+# Step 1: Load dataset
+data = pd.read_csv("AttritionTest.csv")
+
+# Step 2: Encode variables
+# Label encode binary 'Left' column
+data['Left'] = data['Left'].map({'Yes': 1, 'No': 0})
+
+# Ordinal encode 'LM Rating' and 'Rating' columns
+ordinal_columns = ['LM Rating', 'Rating']
+ordinal_categories = [['Blank', 'Not Achieved', 'Achieved', 'Over Achieved', 'Exceptional'], 
+                      ['Blank', 'Not Achieved', 'Achieved', 'Over Achieved', 'Exceptional']]
+ordinal_encoder = OrdinalEncoder(categories=ordinal_categories)
+data[ordinal_columns] = ordinal_encoder.fit_transform(data[ordinal_columns])
+
+# One-hot encode the nominal columns
+nominal_columns = ['Directorate', 'Location', 'JobFamilyType', 'Gender', 'Ethnicity', 'JobFamily']
+data_encoded = pd.get_dummies(data, columns=nominal_columns)
+
+# Step 3: Prepare features and target
+X = data_encoded.drop(['EmployeeID', 'Left'], axis = 1)
+y = data_encoded['Left']
+
+# Step 4: Split data into train and test sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+
+# Step 5: Feature scaling
+scaler = StandardScaler() 
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# Step 6: Class weights
+sample_weights = class_weight.compute_sample_weight ('balanced', y_train)
+
+# Step 7: Fine tune parameters
+# Use RandomizedSearchCV for hyperparameter tuning
+param_dist = {
+    'Gradient Boosting': {
+        'n_estimators': [50,100,200],
+        'learning_rate': [0.01,0.1,1],
+        'min_samples_split': [2,5,10],
+        'min_samples_leaf': [1,2,4],
+        'max_depth': [3,5,10]
+    }
+}
+
+# Step 8: Create Classifier
+clf = GradientBoostingClassifier(n_estimators=200, learning_rate=1, max_depth = 5, min_samples_split=10, min_samples_leaf=1, random_state=21)
+
+# Step 9: Train and evaluate classifiers 
+random_search = RandomizedSearchCV(clf, param_distributions=param_dist['Gradient Boosting'], n_iter=15)
+random_search.fit(X_train_scaled, y_train, sample_weight=sample_weights)
+evaluate_model(random_search, X_test_scaled, y_test)
