@@ -1,0 +1,19 @@
+# Load full dataset
+full_data = pd.read_csv("AttritionFull.csv")
+
+# Apply same preprocessing as for the training data
+# (This is just an example, replace with your actual preprocessing steps)
+full_data_encoded = pd.get_dummies(full_data, columns=nominal_columns)
+X_full = full_data_encoded.drop(['EmployeeID', 'Left'], axis = 1)
+X_full_scaled = scaler.transform(X_full)  # Note: Use the same scaler object you fit on the training data
+
+# Get predicted probabilities
+full_probabilities = random_search.predict_proba(X_full_scaled)[:, 1]
+
+# Create DataFrame with results
+full_results_df = pd.DataFrame({
+    'EmployeeID': full_data['EmployeeID'],
+    'Probability_of_Leaving': full_probabilities
+})
+
+print(full_results_df)
