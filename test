@@ -96,3 +96,13 @@ plt.xlabel('Predicted probability of Class 1')
 plt.ylabel('Frequency')
 plt.show()
 
+# Create a DataFrame with actual and predicted values
+results_df = pd.DataFrame({
+    'Actual': y_test,
+    'Probability_of_1': y_pred_proba
+})
+
+# To get a better look at the data, you may want to sort the DataFrame by the probability:
+results_df = results_df.sort_values(by='Probability_of_1', ascending=False)
+
+print(results_df)
