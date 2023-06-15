@@ -33,7 +33,7 @@ nominal_columns = ['Directorate', 'Location', 'JobFamilyType', 'Gender', 'Ethnic
 data_encoded = pd.get_dummies(data, columns=nominal_columns)
 
 # Step 3: Prepare features and target
-X = data_encoded.drop(['EmployeeID', 'Left'], axis = 1)
+X = data_encoded.drop(['Dummy E Number', 'Left'], axis = 1)
 y = data_encoded['Left']
 
 # Step 4: Split data into train and test sets
@@ -75,6 +75,23 @@ y_pred_proba = random_search.predict_proba(X_test_scaled)[:, 1]
 auc_roc =roc_auc_score(y_test, y_pred_proba)
 print(f"AUC-ROC: {auc_roc}")
 
+# After training the model:
+best_model = random_search.best_estimator_  # this is your best model after hyperparameter tuning
+
+# Get feature importances
+importances = best_model.feature_importances_
+
+# Create a DataFrame to display features and their importances
+feature_importances_df = pd.DataFrame({
+    'Feature': X.columns,  # assuming X is your input DataFrame
+    'Importance': importances
+})
+
+# Sort the DataFrame by importance in descending order
+feature_importances_df = feature_importances_df.sort_values(by='Importance', ascending=False)
+
+print(feature_importances_df)
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -88,7 +105,7 @@ plt.xlabel('Predicted probability of Class 1')
 plt.ylabel('Frequency')
 plt.show()
 
-# Next, let's see the distribution of probabilities for the actual leavers
+# Distribution of probabilities for the actual leavers
 leavers_probs = prob_class_1[y_test == 1]
 plt.hist(leavers_probs, bins=np.linspace(0, 1, 21), alpha=0.5, color='r', edgecolor='black')
 plt.title('Histogram of predicted probabilities for actual leavers')
@@ -102,7 +119,7 @@ results_df = pd.DataFrame({
     'Probability_of_1': y_pred_proba
 })
 
-# To get a better look at the data, you may want to sort the DataFrame by the probability:
+# Sort the DataFrame by the probability:
 results_df = results_df.sort_values(by='Probability_of_1', ascending=False)
 
 print(results_df)
