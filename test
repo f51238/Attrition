@@ -1,4 +1,6 @@
 import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
 from sklearn.model_selection import train_test_split, KFold, RandomizedSearchCV
 from sklearn.preprocessing import StandardScaler, OneHotEncoder, LabelEncoder, OrdinalEncoder
 from sklearn.ensemble import GradientBoostingClassifier
@@ -147,9 +149,6 @@ full_results_df = pd.DataFrame({
     'Left': full_data['Left']
 })
 
-
-import matplotlib.pyplot as plt
-import numpy as np
 
 # Get the probabilities of class 1
 prob_class_1 = y_pred_proba
