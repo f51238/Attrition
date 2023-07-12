@@ -81,7 +81,19 @@ scores = cross_val_score(random_search, X_train_scaled, y_train, scoring='roc_au
 # Print the cross-validation scores
 print("Cross-Validation AUC-ROC scores:", scores)
 print("Mean AUC-ROC score:", np.mean(scores))
+from sklearn.ensemble import GradientBoostingClassifier
 
+# Step 8: Create Classifier with regularization
+clf = GradientBoostingClassifier(random_state=21, alpha=0.1)  # L2 regularization
+
+# or
+
+clf = GradientBoostingClassifier(random_state=21, l1_ratio=0.5)  # L1 regularization
+
+# Step 9: Train and evaluate classifiers 
+random_search = RandomizedSearchCV(clf, param_distributions=param_dist, n_iter=15, cv=cv)
+random_search.fit(X_train_scaled, y_train, sample_weight=sample_weights)
+evaluate_model(random_search, X_test_scaled, y_test)
 
 
 
