@@ -68,6 +68,23 @@ random_search = RandomizedSearchCV(clf, param_distributions=param_dist, n_iter=1
 random_search.fit(X_train_scaled, y_train, sample_weight=sample_weights)
 evaluate_model(random_search, X_test_scaled, y_test)
 
+
+
+
+from sklearn.model_selection import cross_val_score
+
+# Step 9: Train and evaluate classifiers with cross-validation
+scores = cross_val_score(random_search, X_train_scaled, y_train, scoring='roc_auc', cv=cv)
+
+# Print the cross-validation scores
+print("Cross-Validation AUC-ROC scores:", scores)
+print("Mean AUC-ROC score:", np.mean(scores))
+
+
+
+
+
+
 # Compute predicted probabilities
 y_pred_proba = random_search.predict_proba(X_test_scaled)[:, 1]
 
@@ -92,6 +109,45 @@ feature_importances_df = feature_importances_df.sort_values(by='Importance', asc
 
 print(feature_importances_df)
 
+#Create a DataFrame with actual and predicted values
+results_df = pd.DataFrame({
+    'Actual': y_test,
+    'Probability_of_1': y_pred_proba
+})
+
+# Sort the DataFRame by the probability:
+results_df = results_df.sort_values(by='Importance', ascending = False)
+
+print(results_df)
+
+full_data = pd.read_csv("Attrition_Test_FULL.csv")
+
+# Apply same preprocessing as for the training data
+# Step 2: Encode variables
+# Label encode binary 'Left' column
+full_data['Left'] = full_data['Left'].map({'Yes': 1, 'No': 0})
+
+# Ordinal encode 'LM Rating' and 'Rating' columns
+full_data[ordinal_columns] = ordinal_encoder.fit_transform(full_data[ordinal_columns])
+
+# One-hot encode the nominal columns
+full_data_encoded = pd.get_dummies(full_data, columns=nominal_columns)
+
+# Step 3: Prepare features and target
+X_full = full_data_encoded.drop(['Dummy E Number', 'Left'], axis = 1)
+X_full_scaled = scaler.transform(X_full)
+
+# Get predicted probs
+full_probabilities = random_search.predict_proba(X_full_scaled)[:, 1]
+
+# Create DataFrame with results
+full_results_df = pd.DataFrame({
+    'Dummy E number': full_data['Dummy E number'],
+    'Probability_of_Leaving': full_probabilities,
+    'Left': full_data['Left']
+})
+
+
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -112,14 +168,3 @@ plt.title('Histogram of predicted probabilities for actual leavers')
 plt.xlabel('Predicted probability of Class 1')
 plt.ylabel('Frequency')
 plt.show()
-
-# Create a DataFrame with actual and predicted values
-results_df = pd.DataFrame({
-    'Actual': y_test,
-    'Probability_of_1': y_pred_proba
-})
-
-# Sort the DataFrame by the probability:
-results_df = results_df.sort_values(by='Probability_of_1', ascending=False)
-
-print(results_df)
