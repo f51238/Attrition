@@ -33,7 +33,7 @@ nominal_columns = ['Directorate', 'Location', 'JobFamilyType', 'Gender', 'Ethnic
 data_encoded = pd.get_dummies(data, columns=nominal_columns)
 
 # Step 3: Prepare features and target
-X = data_encoded.drop(['Dummy E Number', 'Left'], axis = 1)
+X = data_encoded.drop(['Dummy E number', 'Left'], axis = 1)
 y = data_encoded['Left']
 
 # Step 4: Split data into train and test sets
@@ -134,7 +134,7 @@ full_data[ordinal_columns] = ordinal_encoder.fit_transform(full_data[ordinal_col
 full_data_encoded = pd.get_dummies(full_data, columns=nominal_columns)
 
 # Step 3: Prepare features and target
-X_full = full_data_encoded.drop(['Dummy E Number', 'Left'], axis = 1)
+X_full = full_data_encoded.drop(['Dummy E number', 'Left'], axis = 1)
 X_full_scaled = scaler.transform(X_full)
 
 # Get predicted probs
