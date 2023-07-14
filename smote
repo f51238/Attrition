@@ -1,0 +1,112 @@
+import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
+from sklearn.model_selection import train_test_split, KFold, RandomizedSearchCV
+from sklearn.preprocessing import StandardScaler, OneHotEncoder, LabelEncoder, OrdinalEncoder
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix, roc_auc_score
+from imblearn.over_sampling import SMOTE
+
+# Step 1: Load dataset
+data = pd.read_csv("AttritionTest.csv")
+
+# Step 2: Encode variables
+# Label encode binary 'Left' column
+data['Left'] = data['Left'].map({'Yes': 1, 'No': 0})
+
+# Ordinal encode 'LM Rating' and 'Rating' columns
+ordinal_columns = ['LM Rating', 'Rating']
+ordinal_categories = [['Blank', 'Not Achieved', 'Achieved', 'Over Achieved', 'Exceptional'],
+                      ['Blank', 'Not Achieved', 'Achieved', 'Over Achieved', 'Exceptional']]
+ordinal_encoder = OrdinalEncoder(categories=ordinal_categories)
+data[ordinal_columns] = ordinal_encoder.fit_transform(data[ordinal_columns])
+
+# One-hot encode the nominal columns
+nominal_columns = ['Directorate', 'Location', 'JobFamilyType', 'Gender', 'Ethnicity', 'JobFamily']
+data_encoded = pd.get_dummies(data, columns=nominal_columns)
+
+# Step 3: Prepare features and target
+X = data_encoded.drop(['Dummy E number', 'Left'], axis=1)
+y = data_encoded['Left']
+
+# Step 4: Split data into train and test sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Step 5: Feature scaling
+scaler = StandardScaler()
+X_train_scaled = scaler.fit_transform(X_train)
+X_test_scaled = scaler.transform(X_test)
+
+# Step 6: Address class imbalance using SMOTE
+smote = SMOTE(random_state=42)
+X_train_resampled, y_train_resampled = smote.fit_resample(X_train_scaled, y_train)
+
+# Step 7: Fine tune parameters
+# Use RandomizedSearchCV for hyperparameter tuning
+param_dist = {
+    'n_estimators': [50, 100, 200],
+    'max_depth': [3, 5, 10],
+    'min_samples_split': [2, 5, 10],
+    'min_samples_leaf': [1, 2, 4]
+}
+
+# Define cross-validation strategy
+cv = KFold(n_splits=5, shuffle=True, random_state=42)
+
+# Step 8: Create Classifier
+clf = RandomForestClassifier(random_state=21)
+
+# Step 9: Train and evaluate classifiers
+random_search = RandomizedSearchCV(clf, param_distributions=param_dist, n_iter=15, cv=cv)
+random_search.fit(X_train_resampled, y_train_resampled)
+y_pred = random_search.predict(X_test_scaled)
+
+# Step 10: Evaluate model
+accuracy = accuracy_score(y_test, y_pred)
+print(f"Accuracy: {accuracy}")
+print(confusion_matrix(y_test, y_pred))
+print("\nClassification Report: ")
+print(classification_report(y_test, y_pred))
+
+# Step 11: Compute AUC-ROC
+y_pred_proba = random_search.predict_proba(X_test_scaled)[:, 1]
+auc_roc = roc_auc_score(y_test, y_pred_proba)
+print(f"AUC-ROC: {auc_roc}")
+
+# Step 12: Feature Importance
+importances = random_search.best_estimator_.feature_importances_
+feature_importances_df = pd.DataFrame({
+    'Feature': X.columns,
+    'Importance': importances
+})
+feature_importances_df = feature_importances_df.sort_values(by='Importance', ascending=False)
+print(feature_importances_df)
+
+# Step 13: Predict on full dataset
+full_data = pd.read_csv("Attrition_Test_FULL.csv")
+full_data['Left'] = full_data['Left'].map({'Yes': 1, 'No': 0})
+full_data[ordinal_columns] = ordinal_encoder.transform(full_data[ordinal_columns])
+full_data_encoded = pd.get_dummies(full_data, columns=nominal_columns)
+X_full = full_data_encoded.drop(['Dummy E number', 'Left'], axis=1)
+X_full_scaled = scaler.transform(X_full)
+full_probabilities = random_search.predict_proba(X_full_scaled)[:, 1]
+full_results_df = pd.DataFrame({
+    'Dummy E number': full_data['Dummy E number'],
+    'Probability_of_Leaving': full_probabilities,
+    'Left': full_data['Left']
+})
+print(full_results_df)
+
+# Step 14: Plot histograms
+plt.hist(y_pred_proba, bins=np.linspace(0, 1, 21), alpha=0.5, color='b', edgecolor='black')
+plt.title('Histogram of predicted probabilities')
+plt.xlabel('Predicted probability of Class 1')
+plt.ylabel('Frequency')
+plt.show()
+
+leavers_probs = y_pred_proba[y_test == 1]
+plt.hist(leavers_probs, bins=np.linspace(0, 1, 21), alpha=0.5, color='r', edgecolor='black')
+plt.title('Histogram of predicted probabilities for actual leavers')
+plt.xlabel('Predicted probability of Class 1')
+plt.ylabel('Frequency')
+plt.show()
