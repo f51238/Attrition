@@ -1,0 +1,81 @@
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.optimizers import Adam
+from collections import deque
+
+# Step 1: Load and preprocess the data
+data = pd.read_csv("employee_data.csv")
+# Perform data preprocessing steps like encoding, feature scaling, etc.
+# Split the data into states and actions/targets
+
+# Step 2: Define the Deep Q-Network (DQN) model
+model = Sequential()
+model.add(Dense(32, activation='relu', input_shape=(num_features,)))
+model.add(Dense(32, activation='relu'))
+model.add(Dense(num_actions, activation='linear'))
+model.compile(loss='mse', optimizer=Adam(learning_rate=0.001))
+
+# Step 3: Define the replay memory
+memory = deque(maxlen=2000)
+
+# Step 4: Define the training loop
+batch_size = 32
+num_episodes = 1000
+epsilon = 1.0
+epsilon_decay = 0.995
+epsilon_min = 0.01
+discount_factor = 0.99
+
+for episode in range(num_episodes):
+    state = env.reset()
+    done = False
+    total_reward = 0
+
+    while not done:
+        # Exploration vs. exploitation (epsilon-greedy policy)
+        if np.random.rand() <= epsilon:
+            action = env.action_space.sample()
+        else:
+            q_values = model.predict(state)
+            action = np.argmax(q_values)
+
+        next_state, reward, done, _ = env.step(action)
+
+        # Store the transition in the replay memory
+        memory.append((state, action, reward, next_state, done))
+
+        state = next_state
+        total_reward += reward
+
+    # Perform experience replay (update the DQN)
+    if len(memory) >= batch_size:
+        batch = np.random.choice(memory, batch_size, replace=False)
+        states, actions, rewards, next_states, dones = zip(*batch)
+
+        states = np.concatenate(states)
+        next_states = np.concatenate(next_states)
+
+        q_values = model.predict(states)
+        q_values_next = model.predict(next_states)
+
+        for i in range(batch_size):
+            if dones[i]:
+                q_values[i, actions[i]] = rewards[i]
+            else:
+                q_values[i, actions[i]] = rewards[i] + discount_factor * np.max(q_values_next[i])
+
+        # Train the model on the batch
+        model.fit(states, q_values, verbose=0)
+
+    # Decay epsilon
+    epsilon = max(epsilon_min, epsilon * epsilon_decay)
+
+    # Print the episode results
+    print(f"Episode {episode + 1}: Total Reward = {total_reward}")
+
+# Step 5: Use the trained model for prediction
+# You can use the trained model to predict the likelihood of attrition for new data
+
