@@ -1,0 +1,99 @@
+# Preprocessing example for state representation
+state_features = ['age', 'gender', 'job_role', 'performance_rating']
+state_data = employee_data[state_features]  # Assuming 'employee_data' is the dataset
+state_data = state_data.fillna(0)  # Fill missing values with zeros or appropriate strategy
+state_vectors = state_data.values
+
+
+
+# Define the action space
+action_space = ['Retain', 'Intervene']
+num_actions = len(action_space)
+
+
+
+# Define the reward function
+def calculate_reward(predicted_attrition, actual_attrition, intervention_cost):
+    reward = 0
+    if predicted_attrition == actual_attrition:
+        reward += 1  # Positive reward for correct attrition prediction
+    else:
+        reward -= 1  # Negative reward for incorrect attrition prediction
+    if predicted_attrition == 'Intervene':
+        reward -= intervention_cost  # Negative reward for interventions
+    return reward
+
+
+
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+
+# Define the DQN model
+model = Sequential()
+model.add(Dense(32, activation='relu', input_shape=(num_features,)))
+model.add(Dense(32, activation='relu'))
+model.add(Dense(num_actions, activation='linear'))
+model.compile(loss='mse', optimizer=tf.keras.optimizers.Adam(learning_rate=0.001))
+
+
+
+from collections import deque
+
+replay_memory = deque(maxlen=1000)  # Set maximum size for the replay memory
+
+
+
+import numpy as np
+
+num_episodes = 1000
+epsilon = 1.0
+epsilon_decay = 0.995
+epsilon_min = 0.01
+discount_factor = 0.99
+batch_size = 32
+
+for episode in range(num_episodes):
+    state = env.reset()  # Assuming you have defined the environment 'env' for interaction
+    done = False
+    total_reward = 0
+
+    while not done:
+        if np.random.rand() <= epsilon:
+            action = np.random.choice(action_space)  # Random action for exploration
+        else:
+            q_values = model.predict(np.expand_dims(state, axis=0))
+            action = np.argmax(q_values[0])  # Action with the highest Q-value
+
+        next_state, reward, done, _ = env.step(action)  # Perform the action in the environment
+        total_reward += reward
+
+        replay_memory.append((state, action, reward, next_state, done))
+
+        state = next_state
+
+        # Train the model on a batch of experiences from replay memory
+        if len(replay_memory) >= batch_size:
+            batch = np.array(random.sample(replay_memory, batch_size))
+            states, actions, rewards, next_states, dones = np.stack(batch[:, 0]), \
+                                                           batch[:, 1], \
+                                                           batch[:, 2], \
+                                                           np.stack(batch[:, 3]), \
+                                                           batch[:, 4]
+
+            q_values = model.predict(states)
+            next_q_values = model.predict(next_states)
+
+            targets = q_values.copy()
+            targets[np.arange(batch_size), actions.astype(int)] = rewards + \
+                                                                   discount_factor * np.max(next_q_values, axis=1) * (
+                                                                               1 - dones)
+
+            # Perform a single gradient update on the batch
+            model.fit(states, targets, epochs=1, verbose=0)
+
+    # Decay epsilon
+    epsilon = max(epsilon_min, epsilon * epsilon_decay)
+
+    # Print episode results
+    print(f"Episode {episode + 1}: Total Reward = {total_reward}")
