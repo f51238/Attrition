@@ -1,5 +1,5 @@
-import numpy as np
 import pandas as pd
+import numpy as np
 import tensorflow as tf
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense
@@ -7,21 +7,25 @@ from tensorflow.keras.optimizers import Adam
 from collections import deque
 import random
 
-# Step 1: Load and preprocess the data (same as before)
-# ...
+# Step 1: Load and preprocess the data
+data = pd.read_csv("employee_data.csv")
+state_features = ['age', 'gender', 'job_role', 'performance_rating']
+state_data = data[state_features].fillna(0)  # Fill missing values with zeros or appropriate strategy
+state_vectors = state_data.values
 
-# Step 2: Define the action space (same as before)
-# ...
+# Step 2: Define the action space
+action_space = ['Retain', 'Intervene']
+num_actions = len(action_space)
 
 # Step 3: Define the Deep Q-Network (DQN) model
 model = Sequential()
-model.add(Dense(32, activation='relu', input_shape=(len(X_train_resampled[0]),)))
+model.add(Dense(32, activation='relu', input_shape=(len(state_features),)))
 model.add(Dense(32, activation='relu'))
 model.add(Dense(num_actions, activation='linear'))
 model.compile(loss='mse', optimizer=Adam(learning_rate=0.001))
 
-# Step 4: Implement the replay memory (same as before)
-replay_memory = deque(maxlen=1000)  # Set maximum size for the replay memory
+# Step 4: Implement the replay memory
+replay_memory = deque(maxlen=1000)
 
 # Step 5: Define the training loop
 num_episodes = 1000
@@ -32,7 +36,7 @@ discount_factor = 0.99
 batch_size = 32
 
 for episode in range(num_episodes):
-    state = X_train_resampled[np.random.randint(0, len(X_train_resampled))]  # Random initial state
+    state = state_vectors[np.random.randint(0, len(state_vectors))]  # Random initial state
     done = False
     total_reward = 0
 
@@ -43,13 +47,23 @@ for episode in range(num_episodes):
             q_values = model.predict(np.expand_dims(state, axis=0))
             action = action_space[np.argmax(q_values[0])]  # Action with the highest Q-value
 
-        # Perform the action and calculate the reward (same as before)
-        # ...
+        # Perform the action and calculate the reward
+        if action == 'Retain':
+            # Implement retain logic (e.g., no intervention)
+            reward = 1  # Positive reward for retaining
+        else:  # 'Intervene'
+            # Implement intervention logic (e.g., simulated intervention cost)
+            reward = -1  # Negative reward for intervention
 
-        # Obtain the next state and update the replay memory (same as before)
-        # ...
+        next_state = state_vectors[np.random.randint(0, len(state_vectors))]  # Random next state
+        total_reward += reward
 
-        # Train the model using experience replay (similar to before)
+        # Store the transition in the replay memory
+        replay_memory.append((state, action, reward, next_state, done))
+
+        state = next_state
+
+        # Train the model on a batch of experiences from replay memory
         if len(replay_memory) >= batch_size:
             batch = np.array(random.sample(replay_memory, batch_size))
             states, actions, rewards, next_states, dones = np.stack(batch[:, 0]), \
@@ -70,15 +84,8 @@ for episode in range(num_episodes):
             # Perform a single gradient update on the batch
             model.fit(states, targets, epochs=1, verbose=0)
 
-        # Update the current state and total reward for the episode
-        state = next_state
-        total_reward += reward
-
-    # Decay epsilon (same as before)
+    # Decay epsilon
     epsilon = max(epsilon_min, epsilon * epsilon_decay)
 
-    # Print episode results (same as before)
+    # Print episode results
     print(f"Episode {episode + 1}: Total Reward = {total_reward}")
-
-# Rest of the code (evaluation, feature importance, full dataset prediction, and histograms) can remain the same.
-# ...
