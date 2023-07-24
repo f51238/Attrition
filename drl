@@ -1,0 +1,84 @@
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.optimizers import Adam
+from collections import deque
+import random
+
+# Step 1: Load and preprocess the data (same as before)
+# ...
+
+# Step 2: Define the action space (same as before)
+# ...
+
+# Step 3: Define the Deep Q-Network (DQN) model
+model = Sequential()
+model.add(Dense(32, activation='relu', input_shape=(len(X_train_resampled[0]),)))
+model.add(Dense(32, activation='relu'))
+model.add(Dense(num_actions, activation='linear'))
+model.compile(loss='mse', optimizer=Adam(learning_rate=0.001))
+
+# Step 4: Implement the replay memory (same as before)
+replay_memory = deque(maxlen=1000)  # Set maximum size for the replay memory
+
+# Step 5: Define the training loop
+num_episodes = 1000
+epsilon = 1.0
+epsilon_decay = 0.995
+epsilon_min = 0.01
+discount_factor = 0.99
+batch_size = 32
+
+for episode in range(num_episodes):
+    state = X_train_resampled[np.random.randint(0, len(X_train_resampled))]  # Random initial state
+    done = False
+    total_reward = 0
+
+    while not done:
+        if np.random.rand() <= epsilon:
+            action = np.random.choice(action_space)  # Random action for exploration
+        else:
+            q_values = model.predict(np.expand_dims(state, axis=0))
+            action = action_space[np.argmax(q_values[0])]  # Action with the highest Q-value
+
+        # Perform the action and calculate the reward (same as before)
+        # ...
+
+        # Obtain the next state and update the replay memory (same as before)
+        # ...
+
+        # Train the model using experience replay (similar to before)
+        if len(replay_memory) >= batch_size:
+            batch = np.array(random.sample(replay_memory, batch_size))
+            states, actions, rewards, next_states, dones = np.stack(batch[:, 0]), \
+                                                           batch[:, 1], \
+                                                           batch[:, 2], \
+                                                           np.stack(batch[:, 3]), \
+                                                           batch[:, 4]
+
+            q_values = model.predict(states)
+            next_q_values = model.predict(next_states)
+
+            targets = q_values.copy()
+            targets[np.arange(batch_size), np.where(actions == 'Intervene')] = rewards + \
+                                                                               discount_factor * np.max(
+                                                                                   next_q_values, axis=1)[
+                                                                                   dones == False]
+
+            # Perform a single gradient update on the batch
+            model.fit(states, targets, epochs=1, verbose=0)
+
+        # Update the current state and total reward for the episode
+        state = next_state
+        total_reward += reward
+
+    # Decay epsilon (same as before)
+    epsilon = max(epsilon_min, epsilon * epsilon_decay)
+
+    # Print episode results (same as before)
+    print(f"Episode {episode + 1}: Total Reward = {total_reward}")
+
+# Rest of the code (evaluation, feature importance, full dataset prediction, and histograms) can remain the same.
+# ...
